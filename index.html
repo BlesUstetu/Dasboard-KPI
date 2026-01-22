@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BlesProduction — KPI Dashboard</title>
+  <meta name="description" content="KPI dashboard reading from Google Sheets via Apps Script Web App JSON API." />
+  <style>
+    :root{
+      --bg:#0b1220;
+      --text:#e7eefc;
+      --muted:#a4b6d6;
+      --line:rgba(255,255,255,.10);
+      --r:18px;
+      --gap:14px;
+      --accent:#7cf3ff;
+      --accent2:#9d7cff;
+      --good:#53d4a6;
+      --bad:#ff6b6b;
+      --warn:#ffd166;
+      --shadow:0 18px 40px rgba(0,0,0,.40);
+      --focus:0 0 0 3px rgba(124,243,255,.20);
+    }
+    [data-theme="light"]{
+      --bg:#f6f8ff;
+      --text:#0f172a;
+      --muted:#5b6b87;
+      --line:rgba(15,23,42,.12);
+      --shadow:0 18px 40px rgba(17,24,39,.12);
+      --accent:#2f66ff;
+      --accent2:#5b21b6;
+      --focus:0 0 0 3px rgba(47,102,255,.18);
+    }
+    [data-theme="dark"] .neon{
+      color: var(--accent);
+      text-shadow: 0 0 10px rgba(124,243,255,.35), 0 0 22px rgba(124,243,255,.18);
+    }
+    [data-theme="dark"] .neon2{
+      color: var(--accent2);
+      text-shadow: 0 0 10px rgba(157,124,255,.32), 0 0 22px rgba(157,124,255,.16);
+    }
+    [data-theme="light"] .neon, [data-theme="light"] .neon2{ text-shadow:none; }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh;
+      background:
+        radial-gradient(1100px 650px at 18% -10%, rgba(124,243,255,.18), transparent 55%),
+        radial-gradient(900px 620px at 110% 10%, rgba(157,124,255,.12), transparent 55%),
+        var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      line-height:1.35;
+    }
+
+    .wrap{max-width:1200px;margin:0 auto;padding:18px}
+    .top{
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      padding:14px; border:1px solid var(--line); border-radius:var(--r);
+      background:rgba(255,255,255,.03); box-shadow:var(--shadow);
+      position:sticky; top:12px; z-index:5; backdrop-filter:blur(10px);
+    }
+    .top h1{margin:0;font-size:16px;letter-spacing:.2px}
+    .meta{margin:4px 0 0 0;color:var(--muted);font-size:12px}
+    .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+
+    .btn{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-size:13px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .btn.primary{
+      border-color: rgba(124,243,255,.45);
+      background: rgba(124,243,255,.14);
+    }
+    [data-theme="light"] .btn.primary{
+      border-color: rgba(47,102,255,.45);
+      background: rgba(47,102,255,.12);
+    }
+    .btn:focus{outline:none;box-shadow:var(--focus)}
+    .input{
+      display:flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:14px;border:1px solid var(--line);
+      background:rgba(255,255,255,.03);min-width:260px
+    }
+    .input input{width:100%;border:none;outline:none;background:transparent;color:var(--text);font-size:13px}
+
+    .grid{display:grid;gap:var(--gap);margin-top:var(--gap)}
+    .kpis{grid-template-columns:repeat(12,1fr)}
+    .card{
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      padding:14px;
+      overflow:hidden;
+    }
+    .kpi{grid-column:span 3;min-height:122px}
+    .label{color:var(--muted);font-size:12px;margin:0}
+    .value{font-size:22px;margin:6px 0 0 0}
+    [data-theme="dark"] .value{ text-shadow: 0 0 14px rgba(124,243,255,.10); }
+    .sub{margin:8px 0 0 0;display:flex;gap:10px;align-items:center;color:var(--muted);font-size:12px}
+    .badge{
+      padding:4px 8px;border-radius:999px;border:1px solid var(--line);
+      background:rgba(255,255,255,.03);font-size:12px
+    }
+    .up{color:var(--good)} .down{color:var(--bad)}
+    .bar{height:10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);overflow:hidden;margin-top:10px}
+    .bar i{
+      display:block;height:100%;width:0%;
+      background:linear-gradient(90deg, rgba(124,243,255,.95), rgba(157,124,255,.75));
+      border-radius:999px
+    }
+    [data-theme="light"] .bar i{
+      background:linear-gradient(90deg, rgba(47,102,255,.92), rgba(91,33,182,.70));
+    }
+
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left}
+    th{color:var(--muted);font-size:12px;font-weight:600}
+    tr:hover td{background:rgba(255,255,255,.03)}
+    .right{text-align:right}
+    .status{display:inline-flex;align-items:center;gap:8px}
+    .dot{width:9px;height:9px;border-radius:999px;background:var(--muted);box-shadow:0 0 0 4px rgba(255,255,255,.04)}
+    .dot.ok{background:var(--good)} .dot.bad{background:var(--bad)} .dot.warn{background:var(--warn)}
+
+    .footer{color:var(--muted);font-size:12px;margin-top:14px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+
+    @media (max-width: 980px){.kpi{grid-column:span 6}}
+    @media (max-width: 640px){
+      .kpi{grid-column:span 12}
+      .top{flex-direction:column;align-items:stretch}
+      .input{min-width:0;width:100%}
+      .actions{justify-content:stretch}
+      .btn{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app" data-theme="dark">
+    <div class="top">
+      <div>
+        <h1 class="neon">KPI Dashboard</h1>
+        <div class="meta" id="meta">Set API_URL + API_KEY</div>
+      </div>
+      <div class="actions">
+        <div class="input" title="Ctrl/⌘+K">
+          <span class="neon2">⌕</span>
+          <input id="search" placeholder="Search..." />
+        </div>
+        <button class="btn" id="theme">Theme</button>
+        <button class="btn" id="refresh">Refresh</button>
+        <button class="btn primary" id="export">Export</button>
+      </div>
+    </div>
+
+    <section class="grid kpis" id="kpis"></section>
+
+    <section class="grid">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+          <div style="font-weight:700;" class="neon2">KPI</div>
+          <div class="meta" id="kpiCount">0</div>
+        </div>
+        <div style="overflow:auto;border-radius:14px;">
+          <table>
+            <thead>
+              <tr>
+                <th>KPI</th>
+                <th class="right">Target</th>
+                <th class="right">Actual</th>
+                <th>Status</th>
+                <th class="right">Achv.</th>
+              </tr>
+            </thead>
+            <tbody id="kpiTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+          <div style="font-weight:700;" class="neon2">Divisions</div>
+          <div class="meta" id="divCount">0</div>
+        </div>
+        <div style="overflow:auto;border-radius:14px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Division</th>
+                <th>Focus</th>
+                <th>Status</th>
+                <th class="right">Score</th>
+                <th class="right">Target</th>
+              </tr>
+            </thead>
+            <tbody id="divTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">
+      <span>© <span id="year"></span> BlesProduction</span>
+      <span id="hint"></span>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbxpKw-1UaTGAKVRSVkQMcynxvlQtWUWu0coo_bcpKI4hDRX_kdaTeoFq0TuiqQwQ5Q-/exec";
+    const API_KEY = "blesproduction-123";
+
+    const app = document.getElementById("app");
+    const els = {
+      meta: document.getElementById("meta"),
+      hint: document.getElementById("hint"),
+      year: document.getElementById("year"),
+      search: document.getElementById("search"),
+      theme: document.getElementById("theme"),
+      refresh: document.getElementById("refresh"),
+      exportBtn: document.getElementById("export"),
+      kpis: document.getElementById("kpis"),
+      kpiTable: document.getElementById("kpiTable"),
+      divTable: document.getElementById("divTable"),
+      kpiCount: document.getElementById("kpiCount"),
+      divCount: document.getElementById("divCount"),
+    };
+    els.year.textContent = new Date().getFullYear();
+
+    let cache = { kpi: [], divisions: [], meta: {} };
+    let query = "";
+
+    const clamp = (n,a,b)=> Math.max(a, Math.min(b,n));
+    const pct = (actual,target)=> target ? (actual/target)*100 : 0;
+
+    function fmtValue(unit, v){
+      const n = Number(v);
+      if(unit === "%") return (isFinite(n) ? n.toFixed(1) : v) + "%";
+      if(unit === "rating") return (isFinite(n) ? n.toFixed(1) : v) + "/5";
+      return String(v);
+    }
+    function fmtTarget(unit, v){
+      const n = Number(v);
+      if(unit === "%") return (isFinite(n) ? n.toFixed(0) : v) + "%";
+      if(unit === "rating") return isFinite(n) ? n.toFixed(1) : String(v);
+      return String(v);
+    }
+    function statusForAchv(achv){
+      if(achv >= 100) return {t:"On Track", cls:"ok"};
+      if(achv >= 92)  return {t:"Watch", cls:"warn"};
+      return {t:"Off Track", cls:"bad"};
+    }
+    function badgeClass(delta){
+      return Number(delta) >= 0 ? "up" : "down";
+    }
+
+    async function fetchAll(){
+      if(!API_URL || API_URL.includes("PASTE_WEB_APP_URL")){
+        els.meta.textContent = "Set API_URL + API_KEY";
+        throw new Error("API_URL belum diisi");
+      }
+      const url = `${API_URL}?action=all&key=${encodeURIComponent(API_KEY)}`;
+      const res = await fetch(url, { method:"GET" });
+      const data = await res.json();
+      if(!data.ok) throw new Error(data.error || "API error");
+
+      cache.kpi = Array.isArray(data.kpi) ? data.kpi : [];
+      cache.divisions = Array.isArray(data.divisions) ? data.divisions : [];
+      cache.meta = data.meta || {};
+
+      const stamp = cache.meta.lastUpdated || data.ts || "-";
+      els.meta.textContent = `Last updated: ${stamp}`;
+      els.hint.textContent = `KPI ${cache.kpi.length} • Div ${cache.divisions.length}`;
+
+      render();
+    }
+
+    function render(){
+      const q = query.trim().toLowerCase();
+
+      const kpiRows = cache.kpi.filter(r=>{
+        if(!q) return true;
+        return `${r.kpi} ${r.unit} ${r.target} ${r.actual} ${r.delta}`.toLowerCase().includes(q);
+      });
+
+      const divRows = cache.divisions.filter(r=>{
+        if(!q) return true;
+        return `${r.division} ${r.focus} ${r.score} ${r.target}`.toLowerCase().includes(q);
+      });
+
+      const top = kpiRows.slice(0,4);
+      els.kpis.innerHTML = top.map(r=>{
+        const a = Number(r.actual), t = Number(r.target);
+        const achv = pct(a, t);
+        const s = statusForAchv(achv);
+        const delta = Number(r.delta || 0);
+        const w = clamp(achv, 0, 120).toFixed(0);
+
+        return `
+          <div class="card kpi">
+            <p class="label">${r.kpi}</p>
+            <p class="value neon">${fmtValue(r.unit, r.actual)}</p>
+            <div class="sub">
+              <span class="badge ${badgeClass(delta)}">${delta>=0?"+":""}${isFinite(delta)?delta.toFixed(1):delta}${r.unit==="%"?"%":""}</span>
+              <span>${s.t}</span>
+            </div>
+            <div class="bar"><i style="width:${w}%"></i></div>
+            <div class="sub"><span>Target:</span><span class="badge">${fmtTarget(r.unit, r.target)}</span></div>
+          </div>
+        `;
+      }).join("");
+
+      els.kpiCount.textContent = kpiRows.length;
+      els.kpiTable.innerHTML = kpiRows.map(r=>{
+        const achv = pct(Number(r.actual), Number(r.target));
+        const s = statusForAchv(achv);
+        return `
+          <tr>
+            <td>${r.kpi}</td>
+            <td class="right">${fmtTarget(r.unit, r.target)}</td>
+            <td class="right">${fmtValue(r.unit, r.actual)}</td>
+            <td><span class="status"><span class="dot ${s.cls}"></span>${s.t}</span></td>
+            <td class="right">${achv.toFixed(1)}%</td>
+          </tr>
+        `;
+      }).join("");
+
+      els.divCount.textContent = divRows.length;
+      els.divTable.innerHTML = divRows.map(r=>{
+        const achv = pct(Number(r.score), Number(r.target));
+        const s = statusForAchv(achv);
+        return `
+          <tr>
+            <td>${r.division}</td>
+            <td>${r.focus}</td>
+            <td><span class="status"><span class="dot ${s.cls}"></span>${s.t}</span></td>
+            <td class="right">${Number(r.score)}</td>
+            <td class="right">${Number(r.target)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function toCSV(rows, headers){
+      const lines = [headers.join(",")];
+      rows.forEach(r=>{
+        const line = headers.map(h=>{
+          const v = r[h];
+          if(v === null || v === undefined) return "";
+          const s = String(v);
+          return (s.includes(",") || s.includes('"')) ? `"${s.replaceAll('"','""')}"` : s;
+        }).join(",");
+        lines.push(line);
+      });
+      return lines.join("\n");
+    }
+
+    function download(filename, text){
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], {type:"text/csv"}));
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    }
+
+    els.search.addEventListener("input", (e)=>{ query = e.target.value || ""; render(); });
+    els.refresh.addEventListener("click", ()=> fetchAll().catch(err=>alert(err.message)));
+    els.exportBtn.addEventListener("click", ()=>{
+      download("kpi.csv", toCSV(cache.kpi, ["kpi","unit","target","actual","delta","updated_at"]));
+      setTimeout(()=> download("division.csv", toCSV(cache.divisions, ["division","focus","score","target","updated_at"])), 250);
+    });
+    els.theme.addEventListener("click", ()=>{
+      app.dataset.theme = (app.dataset.theme === "dark") ? "light" : "dark";
+    });
+
+    window.addEventListener("keydown", (e)=>{
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "k"){
+        e.preventDefault(); els.search.focus();
+      }
+    });
+
+    fetchAll().catch(()=>{});
+    // Auto refresh setiap 10 detik
+    setInterval(() => {
+      fetchAll().catch(() => {});
+    }, 10000);
+
+  </script>
+</body>
+</html>
