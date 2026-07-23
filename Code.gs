@@ -28,16 +28,16 @@ function doGet(e) {
       });
     }
 
-    if (action === "division") {
+    if (action === "YEDIANUS") {
       return json_({
         ok: true,
-        divisions: readTable_(ss, "DIVISION"),
+        divisions: readTable_(ss, "YEDIANUS"),
         ts: new Date().toISOString()
       });
     }
 
     const kpi = readTable_(ss, "ASEP");
-    const divisions = readTable_(ss, "DIVISION");
+    const divisions = readTable_(ss, "DYEDIANUS");
 
     return json_({
       ok: true,
