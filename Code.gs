@@ -4,7 +4,7 @@
  * REQUIRED SHEETS:
  * - CONFIG   : A=key, B=value  -> API_KEY
  * - KPI      : kpi, unit, target, actual, delta, updated_at
- * - DIVISION : division, focus, score, target, updated_at
+ * - DIVISION : kpi, unit, target, actual, delta, updated_at
  *
  * TEST URL:
  *   /exec?action=all&key=YOUR_API_KEY
@@ -28,7 +28,7 @@ function doGet(e) {
       });
     }
 
-    if (action === "divisions") {
+    if (action === "division") {
       return json_({
         ok: true,
         divisions: readTable_(ss, "YEDIANUS"),
