@@ -28,7 +28,7 @@ function doGet(e) {
       });
     }
 
-    if (action === "YEDIANUS") {
+    if (action === "division") {
       return json_({
         ok: true,
         divisions: readTable_(ss, "YEDIANUS"),
