@@ -37,7 +37,7 @@ function doGet(e) {
     }
 
     const kpi = readTable_(ss, "ASEP");
-    const divisions = readTable_(ss, "DYEDIANUS");
+    const divisions = readTable_(ss, "YEDIANUS");
 
     return json_({
       ok: true,
