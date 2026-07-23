@@ -376,7 +376,7 @@
     els.refresh.addEventListener("click", ()=> fetchAll().catch(err=>alert(err.message)));
     els.exportBtn.addEventListener("click", ()=>{
       download("kpi.csv", toCSV(cache.kpi, ["kpi","unit","target","actual","delta","updated_at"]));
-      setTimeout(()=> download("division.csv", toCSV(cache.divisions, ["division","focus","score","target","updated_at"])), 250);
+      setTimeout(()=> download("division.csv", toCSV(cache.divisions, ["kpi","unit","target","actual","delta","updated_at"])), 250);
     });
     els.theme.addEventListener("click", ()=>{
       app.dataset.theme = (app.dataset.theme === "dark") ? "light" : "dark";
