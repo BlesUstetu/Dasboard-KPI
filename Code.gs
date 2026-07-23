@@ -23,7 +23,7 @@ function doGet(e) {
     if (action === "asep") {
       return json_({
         ok: true,
-        kpi: readTable_(ss, "KPI"),
+        kpi: readTable_(ss, "ASEP"),
         ts: new Date().toISOString()
       });
     }
