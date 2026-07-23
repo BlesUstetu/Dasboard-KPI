@@ -20,7 +20,7 @@ function doGet(e) {
     const action = String((e.parameter.action || "all")).toLowerCase();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    if (action === "kpi") {
+    if (action === "asep") {
       return json_({
         ok: true,
         kpi: readTable_(ss, "KPI"),
@@ -36,7 +36,7 @@ function doGet(e) {
       });
     }
 
-    const kpi = readTable_(ss, "KPI");
+    const kpi = readTable_(ss, "ASEP");
     const divisions = readTable_(ss, "DIVISION");
 
     return json_({
