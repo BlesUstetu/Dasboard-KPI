@@ -292,7 +292,7 @@
 
       const divRows = cache.divisions.filter(r=>{
         if(!q) return true;
-        return `${r.division} ${r.focus} ${r.score} ${r.target}`.toLowerCase().includes(q);
+        return `${r.kpi} ${r.unit} ${r.target} ${r.actual} ${r.delta}`.toLowerCase().includes(q);
       });
 
       const top = kpiRows.slice(0,4);
