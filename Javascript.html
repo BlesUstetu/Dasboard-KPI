@@ -1,0 +1,97 @@
+<script>
+    let globalData = [];
+    let barChartInstance = null;
+
+    window.onload = function() {
+        google.script.run
+            .withSuccessHandler(renderDashboard)
+            .withFailureHandler(err => alert("Gagal memuat data KPI."))
+            .getSecurityKPI();
+    };
+
+    function renderDashboard(data) {
+        if (!data || data.length === 0) return;
+        globalData = data;
+        populateTable(data);
+        updateMetricsAndCharts(data);
+    }
+
+    function populateTable(data) {
+        const tbody = document.getElementById('tableBodyKPI');
+        tbody.innerHTML = '';
+        data.forEach(row => {
+            let rankBadge = `#${row.peringkat}`;
+            if(row.peringkat == 1) rankBadge = `#1 👑`;
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-cyan-500/5 transition row-item";
+            tr.setAttribute("data-group", row.shift);
+            tr.setAttribute("data-name", row.nama.toLowerCase());
+            tr.innerHTML = `
+                <td class="py-3 px-3 font-bold text-cyan-300">${rankBadge}</td>
+                <td class="py-3 px-3 font-semibold text-white">${row.nama}</td>
+                <td class="py-3 px-3 text-purple-300">${row.shift}</td>
+                <td class="py-3 px-3 text-center">${row.kehadiran}</td>
+                <td class="py-3 px-3 text-center">${row.apel}</td>
+                <td class="py-3 px-3 text-center">${row.sop}</td>
+                <td class="py-3 px-3 text-center">${row.patroli}</td>
+                <td class="py-3 px-3 text-center">${row.laporan}</td>
+                <td class="py-3 px-3 text-center">${row.insiden}</td>
+                <td class="py-3 px-3 text-center">${row.penampilan}</td>
+                <td class="py-3 px-3 text-center">${row.cs}</td>
+                <td class="py-3 px-3 text-center">${row.briefing}</td>
+                <td class="py-3 px-3 text-right font-bold text-cyan-400">${row.totalSkor}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updateMetricsAndCharts(data) {
+        let avgScore = (data.reduce((acc, curr) => acc + parseFloat(curr.totalSkor || 0), 0) / data.length).toFixed(2);
+        document.getElementById('metricAvgScore').textContent = avgScore;
+        document.getElementById('metricSOP').textContent = (data.reduce((acc, curr) => acc + parseFloat(curr.sop || 0), 0) / data.length).toFixed(1);
+        document.getElementById('metricKehadiran').textContent = (data.reduce((acc, curr) => acc + parseFloat(curr.kehadiran || 0), 0) / data.length).toFixed(1) + '%';
+        
+        let top = data.find(item => item.peringkat == 1) || data[0];
+        if(top) document.getElementById('topPerformer').textContent = top.nama;
+
+        const ctxBar = document.getElementById('kpiBarChart').getContext('2d');
+        if (barChartInstance) barChartInstance.destroy();
+        barChartInstance = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.nama.split(' ')[0]),
+                datasets: [{ data: data.map(d => parseFloat(d.totalSkor)), backgroundColor: 'rgba(6, 182, 212, 0.7)', borderColor: '#06b6d4', borderWidth: 1, borderRadius: 6 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#9ca3af' } }, y: { min: 50, max: 100, ticks: { color: '#9ca3af' } } } }
+        });
+
+        const ctxDoughnut = document.getElementById('kpiDoughnutChart').getContext('2d');
+        new Chart(ctxDoughnut, {
+            type: 'doughnut',
+            data: {
+                labels: ['SOP (20%)', 'Kehadiran (15%)', 'Patroli (15%)', 'Lainnya (50%)'],
+                datasets: [{ data: [20, 15, 15, 50], backgroundColor: ['#8b5cf6', '#06b6d4', '#3b82f6', '#10b981'], borderWidth: 0 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 9 } } } } }
+        });
+    }
+
+    function filterGroup() {
+        const selected = document.getElementById('groupSelector').value;
+        document.querySelectorAll('.row-item').forEach(row => {
+            row.style.display = (selected === 'ALL' || row.getAttribute('data-group').includes(selected)) ? '' : 'none';
+        });
+    }
+
+    function searchTable() {
+        const input = document.getElementById('searchInput').value.toLowerCase();
+        document.querySelectorAll('.row-item').forEach(row => {
+            row.style.display = row.getAttribute('data-name').includes(input) ? '' : 'none';
+        });
+    }
+
+    function triggerPDFExport() {
+        alert("🚀 Memproses laporan PDF eksekutif...");
+        google.script.run.withSuccessHandler(res => alert(res.message)).generateAndEmailPDF();
+    }
+</script>
